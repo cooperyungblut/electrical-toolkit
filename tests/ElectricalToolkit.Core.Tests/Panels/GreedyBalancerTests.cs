@@ -80,4 +80,31 @@ public class GreedyBalancerTests
         Assert.Equal(7000, result.PhaseTotals.Values.Max());
         Assert.Equal(5000, result.PhaseTotals.Values.Min());
     }
+
+    [Theory]
+	[InlineData("")]
+	[InlineData("   ")]
+    public void Blank_Name_is_rejected(string name)
+    {
+        var badLoad = new Load( name, 1000);
+		Assert.Throws<ArgumentException>(() => _balancer.Balance(Panel42, [badLoad]));
+    }
+	
+	[Theory]
+	[InlineData(0.0)]
+	[InlineData(-100.0)]
+    public void Va_is_Zero_or_less(double testVa)
+    {
+        var badLoad = new Load( "testName", testVa);
+		Assert.Throws<ArgumentException>(() => _balancer.Balance(Panel42, [badLoad]));
+    }
+	
+	[Theory]
+	[InlineData(2)]
+	[InlineData(3)]
+    public void multiple_poles_not_yet_supported(int poles)
+    {
+        var badLoad = new Load( "testName", 1000, poles);
+		Assert.Throws<NotSupportedException>(() => _balancer.Balance(Panel42, [badLoad]));
+    }
 }
