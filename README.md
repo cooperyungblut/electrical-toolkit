@@ -8,9 +8,18 @@ A set of calculation tools for electrical design work. The first one is a panel 
 
 - 208Y/120V three-phase panels, single-pole loads
 - Greedy balancer: largest load first, onto the lightest phase that still has open slots
+- Local search: starts from greedy, then moves and swaps loads while that lowers the sum of squared phase totals
+- Brute-force balancer (up to 12 loads), used in tests as the exact answer
 - Imbalance % = largest deviation from the phase average, divided by the average
 
-Greedy isn't always optimal. Loads of 6, 3, 3, 2, 2, 2 kVA come out 7/6/5 when 6/6/6 is possible. A local-search pass to fix cases like that is next.
+Greedy alone isn't always optimal. Loads of 6, 3, 3, 2, 2, 2 kVA come out 7/6/5 when 6/6/6 is possible, and local search fixes that case. On 500 random panels of 1 to 9 loads, compared against brute force:
+
+| | Optimal |
+|---|---|
+| Greedy | 426 (85.2%) |
+| Greedy + local search | 480 (96.0%) |
+
+When local search misses, it is at most 3.0 imbalance points above optimal.
 
 ## Planned
 
