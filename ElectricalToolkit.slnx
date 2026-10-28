@@ -1,8 +1,10 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/ElectricalToolkit.Api/ElectricalToolkit.Api.csproj" />
     <Project Path="src/ElectricalToolkit.Core/ElectricalToolkit.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/ElectricalToolkit.Api.Tests/ElectricalToolkit.Api.Tests.csproj" />
     <Project Path="tests/ElectricalToolkit.Core.Tests/ElectricalToolkit.Core.Tests.csproj" />
   </Folder>
 </Solution>
