@@ -33,7 +33,7 @@ public class BalanceEndpointTests : IClassFixture<WebApplicationFactory<Program>
             Load("L1", 6000), Load("L2", 3000), Load("L3", 3000),
             Load("L4", 2000), Load("L5", 2000), Load("L6", 2000));
 
-        var response = await _client.PostAsJsonAsync("/api/balance", body);
+        var response = await _client.PostAsJsonAsync("/api/panels/balance", body);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = await Json(response);
@@ -47,7 +47,7 @@ public class BalanceEndpointTests : IClassFixture<WebApplicationFactory<Program>
     [Fact]
     public async Task Placements_come_back_with_slots_and_phase_names()
     {
-        var response = await _client.PostAsJsonAsync("/api/balance", Request(42, Load("Receptacles - Office 101", 1800)));
+        var response = await _client.PostAsJsonAsync("/api/panels/balance", Request(42, Load("Receptacles - Office 101", 1800)));
 
         var placement = (await Json(response)).GetProperty("placements")[0];
         Assert.Equal("Receptacles - Office 101", placement.GetProperty("name").GetString());
@@ -58,7 +58,7 @@ public class BalanceEndpointTests : IClassFixture<WebApplicationFactory<Program>
     [Fact]
     public async Task Empty_load_list_returns_zeros()
     {
-        var response = await _client.PostAsJsonAsync("/api/balance", Request(42));
+        var response = await _client.PostAsJsonAsync("/api/panels/balance", Request(42));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = await Json(response);
@@ -69,7 +69,7 @@ public class BalanceEndpointTests : IClassFixture<WebApplicationFactory<Program>
     [Fact]
     public async Task Two_pole_load_returns_400_problem_details()
     {
-        var response = await _client.PostAsJsonAsync("/api/balance", Request(42, Load("Water heater", 4500, poles: 2)));
+        var response = await _client.PostAsJsonAsync("/api/panels/balance", Request(42, Load("Water heater", 4500, poles: 2)));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
@@ -79,7 +79,7 @@ public class BalanceEndpointTests : IClassFixture<WebApplicationFactory<Program>
     [Fact]
     public async Task Missing_load_list_returns_400()
     {
-        var response = await _client.PostAsJsonAsync("/api/balance", new { system = "ThreePhase208Y120", spaces = 42 });
+        var response = await _client.PostAsJsonAsync("/api/panels/balance", new { system = "ThreePhase208Y120", spaces = 42 });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
@@ -88,7 +88,7 @@ public class BalanceEndpointTests : IClassFixture<WebApplicationFactory<Program>
     [Fact]
     public async Task Unknown_panel_system_returns_400()
     {
-        var response = await _client.PostAsJsonAsync("/api/balance", new { system = "Delta480", spaces = 42, loads = Array.Empty<object>() });
+        var response = await _client.PostAsJsonAsync("/api/panels/balance", new { system = "Delta480", spaces = 42, loads = Array.Empty<object>() });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
@@ -100,7 +100,7 @@ public class BalanceEndpointTests : IClassFixture<WebApplicationFactory<Program>
         var response = await _client.GetAsync("/openapi/v1.json");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("/api/balance", await response.Content.ReadAsStringAsync());
+        Assert.Contains("/api/panels/balance", await response.Content.ReadAsStringAsync());
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public class BalanceEndpointTests : IClassFixture<WebApplicationFactory<Program>
             Load("L1", 6000), Load("L2", 3000), Load("L3", 3000),
             Load("L4", 2000), Load("L5", 2000), Load("L6", 2000));
         
-        var response = await _client.PostAsJsonAsync("/api/balance", body);
+        var response = await _client.PostAsJsonAsync("/api/panels/balance", body);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
@@ -121,7 +121,7 @@ public class BalanceEndpointTests : IClassFixture<WebApplicationFactory<Program>
     {
         var body = Request(41);
         
-        var response = await _client.PostAsJsonAsync("/api/balance", body);
+        var response = await _client.PostAsJsonAsync("/api/panels/balance", body);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
@@ -136,7 +136,7 @@ public class BalanceEndpointTests : IClassFixture<WebApplicationFactory<Program>
         var badLoad = Load(name, 1000);
         var body = Request(42, badLoad);
         
-        var response = await _client.PostAsJsonAsync("/api/balance", body);
+        var response = await _client.PostAsJsonAsync("/api/panels/balance", body);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
