@@ -4,6 +4,12 @@
 
 A set of calculation tools for electrical design work. The first one is a panel load balancer: give it a panel size and a list of loads, and it assigns breaker slots to keep the phases as even as possible.
 
+## Try it
+
+Live API (opens the interactive docs): https://electrical-toolkit.grayglacier-d0a2e1cb.centralus.azurecontainerapps.io
+
+The first request after the app has been idle takes a few seconds while it starts up (it scales to zero when unused). After that it's fast.
+
 ## Current state
 
 - 208Y/120V three-phase panels, single-pole loads
@@ -20,6 +26,8 @@ Greedy alone isn't always optimal. Loads of 6, 3, 3, 2, 2, 2 kVA come out 7/6/5 
 | Greedy + local search | 480 (96.0%) |
 
 When local search misses, it is at most 3.0 imbalance points above optimal.
+
+REST API (ASP.NET Core, .NET 10) with OpenAPI docs, deployed to Azure Container Apps from GitHub Actions.
 
 ## Planned
 
