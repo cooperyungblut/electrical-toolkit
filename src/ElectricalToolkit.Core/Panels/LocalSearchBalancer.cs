@@ -25,7 +25,7 @@ public sealed class LocalSearchBalancer : IPanelBalancer
                 {
                     if (p == phaseOf[i]) continue;
                     var from = phaseOf[i];
-                    if (used[p] < capacity[p] && Helps(loadList[i].Va, from, p))
+                    if (used[p] < capacity[p] && Helps(loadList[i].Va, from, p)) // Move One at a time
                     {
                         phaseOf[i] = p;
                         totals[p] += loadList[i].Va;
@@ -46,7 +46,7 @@ public sealed class LocalSearchBalancer : IPanelBalancer
                     var bigPhase = phaseOf[big];
                     var smallPhase = phaseOf[small];
                     var d = loadList[big].Va - loadList[small].Va;
-                    if (Helps(d, bigPhase, smallPhase))
+                    if (Helps(d, bigPhase, smallPhase)) // Swap two loads
                     {
                         (phaseOf[i], phaseOf[j]) = (phaseOf[j], phaseOf[i]);
                         totals[bigPhase] -= d;
