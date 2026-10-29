@@ -8,9 +8,9 @@ public static class BalanceEndpoints
 {
     public static IEndpointRouteBuilder MapBalanceEndpoints(this IEndpointRouteBuilder app)
     {
-        var api = app.MapGroup("/api");
+        var panels = app.MapGroup("/api/panels");
 
-        api.MapPost("/balance", Balance)
+        panels.MapPost("/balance", Balance)
             .WithName("BalancePanel")
             .WithSummary("Assign loads to panel slots to minimize phase imbalance.");
 
