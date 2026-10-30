@@ -1,0 +1,22 @@
+﻿@inherits LayoutComponentBase
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            <a href="scalar" target="_blank">API docs</a>
+            <a href="https://github.com/cooperyungblut/electrical-toolkit" target="_blank">Source</a>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+
+        <footer class="disclaimer px-4">
+            Calculation aid only. Results do not replace the judgment of a qualified engineer and must be
+            verified against the governing code, manufacturer data and project requirements.
+        </footer>
+    </main>
+</div>

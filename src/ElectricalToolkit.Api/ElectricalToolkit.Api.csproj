@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ElectricalToolkit.Core\ElectricalToolkit.Core.csproj" />
+    <ProjectReference Include="..\ElectricalToolkit.Web\ElectricalToolkit.Web.csproj" />
   </ItemGroup>
 
 </Project>

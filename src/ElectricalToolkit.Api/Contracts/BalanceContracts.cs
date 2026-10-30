@@ -11,7 +11,7 @@ public sealed record BalanceRequest(
     [Required] IReadOnlyList<LoadRequest>? Loads);
 
 public sealed record LoadRequest(
-    [Required] string? Name,
+    string? Name,
     double Va,
     int Poles = 1);
 

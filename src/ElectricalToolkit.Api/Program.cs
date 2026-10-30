@@ -32,9 +32,16 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
 });
 app.UseStatusCodePages();
 
+// Serve the Blazor UI's files (the ElectricalToolkit.Web project) from this same app.
+app.MapStaticAssets();
+
 app.MapOpenApi();
 app.MapScalarApiReference();
-app.MapGet("/", () => Results.Redirect("/scalar")).ExcludeFromDescription();
 app.MapBalanceEndpoints();
+
+// Any other URL that isn't a file is a page in the UI, so hand it index.html and let Blazor's router decide.
+// Unknown /api URLs still get a 404, so API clients never receive the HTML page by mistake.
+app.MapFallback("/api/{**path}", () => Results.NotFound());
+app.MapFallbackToFile("index.html");
 
 app.Run();

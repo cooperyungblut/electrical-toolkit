@@ -128,17 +128,28 @@ public class BalanceEndpointTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Theory]
-    [InlineData("")]
-	[InlineData("   ")]
-    [InlineData(null)]
-    public async Task Missing_name_returns_400(string? name)
+    [InlineData("", 1200)]
+	[InlineData("   ", 1000)]
+    [InlineData(null, 1100)]
+    public async Task Blank_name_becomes_UL_plus_row_number(string? name, double loadVa)
     {
-        var badLoad = Load(name, 1000);
-        var body = Request(42, badLoad);
+        var testLoad = Load(name, loadVa);
+        var body = Request(42, Load("L1", 6000), testLoad);
         
         var response = await _client.PostAsJsonAsync("/api/panels/balance", body);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var names = (await Json(response)).GetProperty("placements").EnumerateArray()
+            .Select(p => p.GetProperty("name").GetString());
+        Assert.Contains("UL2", names);
+    }
+
+    [Fact]
+    public async Task Root_serves_the_ui()
+    {
+        var response = await _client.GetAsync("/");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
     }
 }

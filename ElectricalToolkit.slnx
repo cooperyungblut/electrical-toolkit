@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/ElectricalToolkit.Api/ElectricalToolkit.Api.csproj" />
     <Project Path="src/ElectricalToolkit.Core/ElectricalToolkit.Core.csproj" />
+    <Project Path="src/ElectricalToolkit.Web/ElectricalToolkit.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ElectricalToolkit.Api.Tests/ElectricalToolkit.Api.Tests.csproj" />

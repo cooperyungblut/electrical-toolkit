@@ -7,6 +7,7 @@ WORKDIR /src
 COPY global.json ./
 COPY src/ElectricalToolkit.Core/ElectricalToolkit.Core.csproj src/ElectricalToolkit.Core/
 COPY src/ElectricalToolkit.Api/ElectricalToolkit.Api.csproj src/ElectricalToolkit.Api/
+COPY src/ElectricalToolkit.Web/ElectricalToolkit.Web.csproj src/ElectricalToolkit.Web/
 RUN dotnet restore src/ElectricalToolkit.Api/ElectricalToolkit.Api.csproj
 
 COPY src/ src/

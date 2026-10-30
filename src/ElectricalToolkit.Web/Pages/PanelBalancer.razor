@@ -1,0 +1,196 @@
+@page "/"
+@using System.ComponentModel.Design
+@using System.Globalization
+@using System.Net
+@using ElectricalToolkit.Web.Models
+@inject HttpClient Http
+
+<PageTitle>Panel load balancer</PageTitle>
+
+<h1>Panel load balancer</h1>
+<p class="text-muted">Enter the panel and its loads, then balance. Blank names become UL plus the row number.</p>
+
+<section class="mb-4">
+    <h2 class="h5">Panel</h2>
+    <div class="row g-3">
+        <div class="col-auto">
+            <label class="form-label" for="system">System</label>
+            <select id="system" class="form-select" @bind="system">
+                <option value="ThreePhase208Y120">208Y/120V, 3-phase</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="spaces">Spaces</label>
+            <input id="spaces" type="number" class="form-control" min="2" step="2" @bind="spaces" />
+        </div>
+    </div>
+</section>
+
+<section class="mb-4">
+    <h2 class="h5">Loads</h2>
+    <table class="table table-sm align-middle load-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th class="text-end">VA</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (int i = 0; i < loads.Count; i++)
+            {
+                // Copy the loop variables: the lambdas below run later, after the loop has moved on.
+                var row = loads[i];
+                var number = i + 1;
+                <tr @key="row">
+                    <td class="text-muted">@number</td>
+                    <td><input class="form-control form-control-sm" placeholder="UL@(number)" @bind="row.Name" /></td>
+                    <td><input type="number" class="form-control form-control-sm text-end" min="1" @bind="row.Va" /></td>
+                    <td><button class="btn btn-sm btn-outline-secondary" title="Remove load" @onclick="() => loads.Remove(row)">✕</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <button class="btn btn-sm btn-outline-primary" @onclick="AddLoad">Add load</button>
+</section>
+
+<button class="btn btn-primary" @onclick="BalanceAsync" disabled="@busy">
+    @(busy ? "Balancing..." : "Balance")
+</button>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger mt-3">@error</div>
+}
+
+@if (result is not null)
+{
+    <section class="mt-4">
+        <h2 class="h5">Result</h2>
+        <p>Imbalance: <strong>@result.ImbalancePercent.ToString("0.0")%</strong></p>
+
+        @foreach (var (phase, total) in result.PhaseTotals)
+        {
+            <div class="phase-bar">
+                <span class="phase-label">@phase</span>
+                <div class="phase-track">
+                    <div class="phase-fill" style="width: @BarWidth(total)%"></div>
+                </div>
+                <span class="phase-value">@total.ToString("N0") VA</span>
+            </div>
+        }
+
+        <h3 class="h6 mt-4">Panel schedule</h3>
+        <table class="table table-sm table-bordered schedule">
+            <thead>
+                <tr>
+                    <th>Ckt</th>
+                    <th>Load</th>
+                    <th class="text-end">VA</th>
+                    <th class="text-center">Phase</th>
+                    <th class="text-end">VA</th>
+                    <th>Load</th>
+                    <th>Ckt</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (int left = 1; left < spacesBalanced; left += 2)
+                {
+                    var right = left + 1;
+                    var l = PlacementAt(left);
+                    var r = PlacementAt(right);
+                    <tr>
+                        <td>@left</td>
+                        <td>@l?.Name</td>
+                        <td class="text-end">@l?.Va.ToString("N0")</td>
+                        <td class="text-center">@(PhaseAt(left) ?? PhaseAt(right))</td>
+                        <td class="text-end">@r?.Va.ToString("N0")</td>
+                        <td>@r?.Name</td>
+                        <td>@right</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+}
+
+@code {
+    private string system = "ThreePhase208Y120";
+    private int spaces = 42;
+
+    // Starts with an example where largest-first greedy alone gets 7/6/5 kVA and local search gets 6/6/6.
+    private readonly List<LoadRow> loads =
+    [
+        new() { Name = "Kitchen equipment", Va = 6000 },
+        new() { Name = "Receptacles - Office", Va = 3000 },
+        new() { Name = "Receptacles - Break room", Va = 3000 },
+        new() { Name = "Lighting - North", Va = 2000 },
+        new() { Name = "Lighting - South", Va = 2000 },
+        new() { Name = "Exhaust fans", Va = 2000 },
+    ];
+
+    private BalanceResponse? result;
+    private int spacesBalanced;   // the spaces the current result was balanced for
+    private string? error;
+    private bool busy;
+
+    private void AddLoad() => loads.Add(new LoadRow());
+
+    private async Task BalanceAsync()
+    {
+        busy = true;
+        error = null;
+        try
+        {
+            // 1. Build a BalanceRequest from system, spaces and loads. Every load is 1 pole for now.
+            var balanceRequest = new BalanceRequest(system, spaces, loads.Select(l => new LoadRequest(l.Name, l.Va, 1)).ToList());
+            // 2. POST it to "api/panels/balance".
+            var response = await Http.PostAsJsonAsync("api/panels/balance", balanceRequest);
+            // 3. On success: read the BalanceResponse into result, and set spacesBalanced = spaces.
+            if (response.IsSuccessStatusCode)
+            {   
+                result = await response.Content.ReadFromJsonAsync<BalanceResponse>();
+                spacesBalanced = spaces;
+            }
+            // 4. Otherwise: read a Problem, set error to its Detail (or its Title if Detail is null), and clear result.
+            else
+            {
+                var problem = await response.Content.ReadFromJsonAsync<Problem>();
+                error = problem?.Detail ?? problem?.Title ?? "The request failed.";
+                result = null;
+            }
+        }
+        catch (HttpRequestException)
+        {
+            error = "Couldn't reach the server. If the app was idle it may be starting up, so try again in a few seconds.";
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    // The placement whose Slots include this slot, or null if the slot is empty.
+    private PlacementResponse? PlacementAt(int slot) =>
+        result?.Placements.FirstOrDefault(p => p.Slots.Contains(slot));
+
+    // The phase of this slot, taken from the placement in it, or null if the slot is empty.
+    private string? PhaseAt(int slot)
+    {
+        var placement = PlacementAt(slot);
+        if (placement is null)
+            return null;
+        int index = placement.Slots.ToList().IndexOf(slot);
+        return placement.Phases[index];
+    }
+
+    // Each bar's length is its phase's share of the heaviest phase, so the heaviest is always full width.
+    private string BarWidth(double total)
+    {
+        var max = result!.PhaseTotals.Values.Max();
+        var percent = max == 0 ? 0 : total / max * 100;
+        // CSS needs a dot as the decimal separator, whatever the browser's language.
+        return percent.ToString("0.#", CultureInfo.InvariantCulture);
+    }
+}
