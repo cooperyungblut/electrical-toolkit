@@ -4,6 +4,8 @@
 
 A set of calculation tools for electrical design work. The first one is a panel load balancer: give it a panel size and a list of loads, and it assigns breaker slots to keep the phases as even as possible.
 
+![Panel load balancer](docs/panel-balancer.png)
+
 ## Try it
 
 Live API (opens the interactive docs): https://electrical-toolkit.grayglacier-d0a2e1cb.centralus.azurecontainerapps.io
@@ -29,9 +31,11 @@ When local search misses, it is at most 3.0 imbalance points above optimal.
 
 REST API (ASP.NET Core, .NET 10) with OpenAPI docs, deployed to Azure Container Apps from GitHub Actions.
 
+Web UI (Blazor WebAssembly) served from the API: load entry, per-phase bars, panel schedule
+
 ## Planned
 
-Web API, Docker, Azure deployment, a web UI, 2- and 3-pole loads, saved panels, 120/240V and 480Y/277V panels. Later: conduit fill and voltage drop.
+Web API, Docker, Azure deployment, 2- and 3-pole loads, saved panels, 120/240V and 480Y/277V panels. Later: conduit fill and voltage drop.
 
 ## Build
 
