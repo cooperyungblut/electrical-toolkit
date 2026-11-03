@@ -19,6 +19,7 @@ public sealed record PanelConfiguration
     public IReadOnlyList<Phase> Phases => System switch
     {
         PanelSystem.ThreePhase208Y120 => [Phase.A, Phase.B, Phase.C],
+        PanelSystem.ThreePhase480Y277 => [Phase.A, Phase.B, Phase.C],
         PanelSystem.SinglePhase120240 => [Phase.A, Phase.B],
         _ => throw new InvalidOperationException($"Unknown panel system {System}"),
     };

@@ -21,6 +21,17 @@ public class PanelConfigurationTests
 
     [Theory]
     [InlineData(1, Phase.A)]
+    [InlineData(4, Phase.B)]
+    [InlineData(6, Phase.C)]
+    [InlineData(42, Phase.C)]
+    public void Panel_480Y277_maps_slots_like_any_three_phase_panel(int slot, Phase expected)
+    {
+        var panel = new PanelConfiguration(PanelSystem.ThreePhase480Y277, 42);
+        Assert.Equal(expected, panel.PhaseOfSlot(slot));
+    }
+
+    [Theory]
+    [InlineData(1, Phase.A)]
     [InlineData(3, Phase.B)]
     [InlineData(5, Phase.A)]
     [InlineData(6, Phase.A)]

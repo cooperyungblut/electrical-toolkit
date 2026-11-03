@@ -112,6 +112,19 @@ public class BalanceEndpointTests : IClassFixture<WebApplicationFactory<Program>
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData("ThreePhase480Y277", 3)]
+    [InlineData("SinglePhase120240", 2)]
+    public async Task Other_panel_systems_are_accepted(string system, int phaseCount)
+    {
+        var body = new { system, spaces = 24, loads = new[] { Load("Pump", 9000, poles: 2), Load("Lights", 1000) } };
+
+        var response = await _client.PostAsJsonAsync("/api/panels/balance", body);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(phaseCount, (await Json(response)).GetProperty("phaseTotals").EnumerateObject().Count());
+    }
+
     [Fact]
     public async Task Missing_load_list_returns_400()
     {
