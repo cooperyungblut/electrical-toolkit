@@ -14,11 +14,21 @@ public static class SlotPacker
         var taken = new bool[panel.Spaces + 1];
         var slotsOf = new IReadOnlyList<int>?[assignments.Count];
 
-        // Multi-pole breakers need runs of open slots, so they go first, biggest first.
+        // Pinned breakers keep their slots. Validation already checked they fit and don't overlap.
+        for (int i = 0; i < assignments.Count; i++)
+        {
+            if (assignments[i].Load.FixedStartSlot is int start)
+            {
+                slotsOf[i] = SlotsFrom(start, assignments[i].Load.Poles);
+                SetTaken(taken, slotsOf[i]!, true);
+            }
+        }
+
+        // Multi-pole breakers need runs of open slots, so they go next, biggest first.
         // Each one takes the lowest start that works. If a later one can't fit, back up and
         // try the next start for an earlier one.
         var multi = Enumerable.Range(0, assignments.Count)
-            .Where(i => assignments[i].Load.Poles > 1)
+            .Where(i => assignments[i].Load.Poles > 1 && !assignments[i].Load.IsPinned)
             .OrderByDescending(i => assignments[i].Load.Poles)
             .ToList();
         int tries = 0;
@@ -58,7 +68,7 @@ public static class SlotPacker
 
         if (!PlaceMulti(0))
         {
-            throw new ArgumentException("The multi-pole breakers don't fit in the open spaces. Add spaces to the panel.");
+            throw new ArgumentException("The multi-pole breakers don't fit in the open spaces. Add spaces or move pinned breakers.");
         }
 
         // 1-pole breakers take the lowest open slot on their phase. Stage 1 counted slots per phase,

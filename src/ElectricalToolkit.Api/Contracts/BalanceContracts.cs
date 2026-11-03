@@ -13,7 +13,8 @@ public sealed record BalanceRequest(
 public sealed record LoadRequest(
     string? Name,
     double Va,
-    int Poles = 1);
+    int Poles = 1,
+    int? FixedStartSlot = null);
 
 // What the API sends back.
 public sealed record BalanceResponse(
@@ -26,4 +27,5 @@ public sealed record PlacementResponse(
     double Va,
     int Poles,
     IReadOnlyList<int> Slots,
-    IReadOnlyList<Phase> Phases);
+    IReadOnlyList<Phase> Phases,
+    bool Pinned);

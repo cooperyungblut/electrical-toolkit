@@ -15,6 +15,20 @@ public static class LoadValidation
             }
         }
 
+        var pinnedSlots = new HashSet<int>();
+        foreach (var load in loads.Where(l => l.IsPinned))
+        {
+            var slots = SlotPacker.SlotsFrom(load.FixedStartSlot!.Value, load.Poles);
+            if (slots[0] < 1 || slots[^1] > panel.Spaces)
+            {
+                throw new ArgumentException($"{load.Name}: a {load.Poles}-pole breaker can't start at slot {slots[0]} on a {panel.Spaces}-space panel");
+            }
+            if (!slots.All(pinnedSlots.Add))
+            {
+                throw new ArgumentException($"{load.Name}: its pinned slots overlap another pinned load");
+            }
+        }
+
         int needed = loads.Sum(l => l.Poles);
         if (needed > panel.Spaces)
         {

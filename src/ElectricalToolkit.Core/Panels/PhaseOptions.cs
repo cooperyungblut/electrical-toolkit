@@ -7,6 +7,11 @@ public static class PhaseOptions
 {
     public static IReadOnlyList<IReadOnlyList<Phase>> For(PanelConfiguration panel, Load load)
     {
+        if (load.FixedStartSlot is int start)
+        {
+            return [SlotPacker.SlotsFrom(start, load.Poles).Select(panel.PhaseOfSlot).ToList()];
+        }
+
         var phases = panel.Phases;
         if (load.Poles == phases.Count)
         {

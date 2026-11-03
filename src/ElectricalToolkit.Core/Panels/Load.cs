@@ -1,8 +1,12 @@
 namespace ElectricalToolkit.Core.Panels;
 
-public sealed record Load(string Name, double Va, int Poles = 1)
+// FixedStartSlot pins the breaker where it already is (adding loads to an existing panel).
+// A pinned load is counted in the phase totals but never moved.
+public sealed record Load(string Name, double Va, int Poles = 1, int? FixedStartSlot = null)
 {
     public double VaPerPole => Va / Poles;
+
+    public bool IsPinned => FixedStartSlot is not null;
 }
 
 public sealed record Placement(Load Load, IReadOnlyList<int> Slots, IReadOnlyList<Phase> Phases);

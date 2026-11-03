@@ -25,6 +25,7 @@ public sealed class LocalSearchBalancer : IPanelBalancer
             improved = false;
 
             // Move one load: a 1-pole load to another phase, or a 2-pole load to another phase pair.
+            // A pinned load has only one option, so it never moves.
             for (int i = 0; i < loadList.Count; i++)
             {
                 foreach (var option in options[i])
@@ -49,7 +50,9 @@ public sealed class LocalSearchBalancer : IPanelBalancer
             {
                 for (int j = i + 1; j < loadList.Count; j++)
                 {
-                    if (loadList[i].Poles != loadList[j].Poles || PhaseOptions.SameSet(phasesOf[i], phasesOf[j]))
+                    if (loadList[i].IsPinned || loadList[j].IsPinned
+                        || loadList[i].Poles != loadList[j].Poles
+                        || PhaseOptions.SameSet(phasesOf[i], phasesOf[j]))
                     {
                         continue;
                     }
