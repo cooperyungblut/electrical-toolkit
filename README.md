@@ -8,19 +8,29 @@ A set of calculation tools for electrical design work. The first one is a panel 
 
 ## Try it
 
-Live API (opens the interactive docs): https://electrical-toolkit.grayglacier-d0a2e1cb.centralus.azurecontainerapps.io
+Live app: https://electrical-toolkit.grayglacier-d0a2e1cb.centralus.azurecontainerapps.io
 
-The first request after the app has been idle takes a few seconds while it starts up (it scales to zero when unused). After that it's fast.
+API docs are at `/scalar`. The first request after the app has been idle takes a few seconds while it starts up (it scales to zero when unused). After that it's fast.
 
-## Current state
+## Features
 
-- 208Y/120V three-phase panels, single-pole loads
-- Greedy balancer: largest load first, onto the lightest phase that still has open slots
-- Local search: starts from greedy, then moves and swaps loads while that lowers the sum of squared phase totals
-- Brute-force balancer (up to 12 loads), used in tests as the exact answer
-- Imbalance % = largest deviation from the phase average, divided by the average
+- Panels: 208Y/120V and 480Y/277V three-phase, 120/240V single-phase
+- 1-, 2- and 3-pole loads. A 2-pole breaker takes slots n and n+2 (two different phases), a 3-pole takes n, n+2, n+4
+- Pinned loads: give an existing breaker's slot and it stays put, so new loads can be balanced around an existing panel
+- Results: phase totals in VA and amps, imbalance %, and a panel schedule
+- REST API (ASP.NET Core, .NET 10) with OpenAPI docs, and a Blazor WebAssembly UI served from the same app
+- Deployed to Azure Container Apps from GitHub Actions
 
-Greedy alone isn't always optimal. Loads of 6, 3, 3, 2, 2, 2 kVA come out 7/6/5 when 6/6/6 is possible, and local search fixes that case. On 500 random panels of 1 to 9 loads, compared against brute force:
+## How it balances
+
+Two stages:
+
+1. **Pick phases.** Greedy places pinned loads first, then 3-pole, 2-pole and 1-pole loads, largest VA first, each on the option that adds least to the sum of squared phase totals. Local search then moves single loads, changes 2-pole phase pairs and swaps loads while that sum keeps going down.
+2. **Pick slots.** Pinned breakers keep their slots. Multi-pole breakers take the lowest open run that matches their phases, backtracking if a later one doesn't fit. 1-pole breakers fill in. If a tight panel can't be packed, the API says so instead of guessing.
+
+Multi-pole VA is split equally across poles. Imbalance % = largest deviation from the phase average, divided by the average. Phase amps = phase VA / line-to-neutral volts.
+
+Greedy alone isn't always optimal. Loads of 6, 3, 3, 2, 2, 2 kVA come out 7/6/5 when 6/6/6 is possible, and local search fixes that case. On 500 random panels of 1 to 9 single-pole loads, compared against a brute-force solver:
 
 | | Optimal |
 |---|---|
@@ -29,13 +39,9 @@ Greedy alone isn't always optimal. Loads of 6, 3, 3, 2, 2, 2 kVA come out 7/6/5 
 
 When local search misses, it is at most 3.0 imbalance points above optimal.
 
-REST API (ASP.NET Core, .NET 10) with OpenAPI docs, deployed to Azure Container Apps from GitHub Actions.
-
-Web UI (Blazor WebAssembly) served from the API: load entry, per-phase bars, panel schedule
-
 ## Planned
 
-Web API, Docker, Azure deployment, 2- and 3-pole loads, saved panels, 120/240V and 480Y/277V panels. Later: conduit fill and voltage drop.
+Saved panels, CSV import. Later: conduit fill and voltage drop.
 
 ## Build
 
@@ -47,7 +53,7 @@ Requires .NET 10.
 
 ## AI assistance
 
-*I wrote the core logic and its tests, with Claude reviewing my code along the way. Project scaffolding, CI config and this README were drafted with Claude's help.*
+*I wrote the original core logic and its tests (slot mapping, greedy, local search, brute force), with Claude reviewing my code along the way. Project scaffolding, CI config and this README were drafted with Claude's help. Claude then extended those balancers for multi-pole loads and wrote the slot packer, pinned loads, the 480Y/277V and 120/240V systems, phase amps and the matching UI.*
 
 ## Disclaimer
 
