@@ -20,6 +20,32 @@ public class PanelConfigurationTests
     }
 
     [Theory]
+    [InlineData(PanelSystem.ThreePhase208Y120, 120)]
+    [InlineData(PanelSystem.SinglePhase120240, 120)]
+    [InlineData(PanelSystem.ThreePhase480Y277, 277)]
+    public void Phase_voltage_is_line_to_neutral(PanelSystem system, double volts) =>
+        Assert.Equal(volts, new PanelConfiguration(system, 42).PhaseVoltage);
+
+    [Fact]
+    public void Phase_amps_are_phase_va_over_line_to_neutral_volts()
+    {
+        var panel = new PanelConfiguration(PanelSystem.ThreePhase480Y277, 42);
+        var result = new GreedyBalancer().Balance(panel, [new Load("Pump", 8310, 3)]);   // 2770 VA per phase
+        Assert.All(result.PhaseAmps.Values, a => Assert.Equal(10, a, precision: 6));
+    }
+
+    [Theory]
+    [InlineData(1, Phase.A)]
+    [InlineData(4, Phase.B)]
+    [InlineData(6, Phase.C)]
+    [InlineData(42, Phase.C)]
+    public void Panel_480Y277_maps_slots_like_any_three_phase_panel(int slot, Phase expected)
+    {
+        var panel = new PanelConfiguration(PanelSystem.ThreePhase480Y277, 42);
+        Assert.Equal(expected, panel.PhaseOfSlot(slot));
+    }
+
+    [Theory]
     [InlineData(1, Phase.A)]
     [InlineData(3, Phase.B)]
     [InlineData(5, Phase.A)]

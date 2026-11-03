@@ -20,8 +20,8 @@ public class BalanceEndpointTests : IClassFixture<WebApplicationFactory<Program>
     private static object Request(int spaces, params object[] loads) =>
         new { system = "ThreePhase208Y120", spaces, loads };
 
-    private static object Load(string? name, double va, int poles = 1) =>
-        new { name, va, poles };
+    private static object Load(string? name, double va, int poles = 1, int? fixedStartSlot = null) =>
+        new { name, va, poles, fixedStartSlot };
 
     private static async Task<JsonElement> Json(HttpResponseMessage response) =>
         JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
@@ -42,6 +42,7 @@ public class BalanceEndpointTests : IClassFixture<WebApplicationFactory<Program>
         Assert.Equal(6000, json.GetProperty("phaseTotals").GetProperty("C").GetDouble());
         Assert.Equal(0, json.GetProperty("imbalancePercent").GetDouble(), precision: 6);
         Assert.Equal(6, json.GetProperty("placements").GetArrayLength());
+        Assert.Equal(50, json.GetProperty("phaseAmps").GetProperty("A").GetDouble(), precision: 6);
     }
 
     [Fact]
@@ -67,13 +68,62 @@ public class BalanceEndpointTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
-    public async Task Two_pole_load_returns_400_problem_details()
+    public async Task Two_pole_load_comes_back_on_two_slots()
     {
         var response = await _client.PostAsJsonAsync("/api/panels/balance", Request(42, Load("Water heater", 4500, poles: 2)));
 
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var placement = (await Json(response)).GetProperty("placements")[0];
+        Assert.Equal(2, placement.GetProperty("poles").GetInt32());
+        Assert.Equal(1, placement.GetProperty("slots")[0].GetInt32());
+        Assert.Equal(3, placement.GetProperty("slots")[1].GetInt32());
+    }
+
+    [Fact]
+    public async Task Four_pole_load_returns_400_problem_details()
+    {
+        var response = await _client.PostAsJsonAsync("/api/panels/balance", Request(42, Load("Pump", 4500, poles: 4)));
+
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
-        Assert.Contains("1-pole", (await Json(response)).GetProperty("detail").GetString());
+        Assert.Contains("Poles", (await Json(response)).GetProperty("detail").GetString());
+    }
+
+    [Fact]
+    public async Task Pinned_load_stays_put_and_is_marked_pinned()
+    {
+        var body = Request(42, Load("Existing", 1000, fixedStartSlot: 7), Load("New", 1000));
+
+        var response = await _client.PostAsJsonAsync("/api/panels/balance", body);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var existing = (await Json(response)).GetProperty("placements").EnumerateArray()
+            .Single(p => p.GetProperty("name").GetString() == "Existing");
+        Assert.Equal(7, existing.GetProperty("slots")[0].GetInt32());
+        Assert.True(existing.GetProperty("pinned").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Overlapping_pins_return_400()
+    {
+        var body = Request(42, Load("E1", 1000, fixedStartSlot: 7), Load("E2", 1000, fixedStartSlot: 7));
+
+        var response = await _client.PostAsJsonAsync("/api/panels/balance", body);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("ThreePhase480Y277", 3)]
+    [InlineData("SinglePhase120240", 2)]
+    public async Task Other_panel_systems_are_accepted(string system, int phaseCount)
+    {
+        var body = new { system, spaces = 24, loads = new[] { Load("Pump", 9000, poles: 2), Load("Lights", 1000) } };
+
+        var response = await _client.PostAsJsonAsync("/api/panels/balance", body);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(phaseCount, (await Json(response)).GetProperty("phaseTotals").EnumerateObject().Count());
     }
 
     [Fact]

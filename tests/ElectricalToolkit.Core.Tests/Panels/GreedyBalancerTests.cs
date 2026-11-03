@@ -99,12 +99,12 @@ public class GreedyBalancerTests
 		Assert.Throws<ArgumentException>(() => _balancer.Balance(Panel42, [badLoad]));
     }
 	
-	[Theory]
-	[InlineData(2)]
-	[InlineData(3)]
-    public void multiple_poles_not_yet_supported(int poles)
+    [Theory]
+    [InlineData(0)]
+    [InlineData(4)]
+    public void Poles_outside_1_to_3_are_rejected(int poles)
     {
-        var badLoad = new Load( "testName", 1000, poles);
-		Assert.Throws<NotSupportedException>(() => _balancer.Balance(Panel42, [badLoad]));
+        var badLoad = new Load("testName", 1000, poles);
+        Assert.Throws<ArgumentException>(() => _balancer.Balance(Panel42, [badLoad]));
     }
 }

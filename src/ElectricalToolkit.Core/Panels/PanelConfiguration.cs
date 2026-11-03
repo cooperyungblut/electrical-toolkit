@@ -19,7 +19,17 @@ public sealed record PanelConfiguration
     public IReadOnlyList<Phase> Phases => System switch
     {
         PanelSystem.ThreePhase208Y120 => [Phase.A, Phase.B, Phase.C],
+        PanelSystem.ThreePhase480Y277 => [Phase.A, Phase.B, Phase.C],
         PanelSystem.SinglePhase120240 => [Phase.A, Phase.B],
+        _ => throw new InvalidOperationException($"Unknown panel system {System}"),
+    };
+
+    // Line-to-neutral volts. Phase current = phase VA / this, the usual panel schedule figure.
+    public double PhaseVoltage => System switch
+    {
+        PanelSystem.ThreePhase208Y120 => 120,
+        PanelSystem.SinglePhase120240 => 120,
+        PanelSystem.ThreePhase480Y277 => 277,
         _ => throw new InvalidOperationException($"Unknown panel system {System}"),
     };
 

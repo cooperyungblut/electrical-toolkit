@@ -8,36 +8,34 @@ public sealed class BruteForceBalancer : IPanelBalancer
     {
         LoadValidation.Validate(panel, loads);
         if (loads.Count() > MaxLoads) throw new ArgumentException("Too many loads for Brute Force");
-        var totals = panel.Phases.ToDictionary(p => p, _ => 0.0);
-        var capacity = panel.Phases.ToDictionary(p => p, p => panel.SlotsOnPhase(p).Count());
-        var used = panel.Phases.ToDictionary(p => p, _ => 0);
-        var current = new Phase[loads.Count];
-        Phase[] best = [];
+        var ledger = new PhaseLedger(panel);
+        var options = loads.Select(load => PhaseOptions.For(panel, load)).ToList();
+        var current = new IReadOnlyList<Phase>[loads.Count];
+        IReadOnlyList<Phase>[]? best = null;
         var bestScore = double.MaxValue;
         void Search(int i)
         {
             if (i == loads.Count)
-            { 
-                double score = Objective.SumOfSquares(totals.Values);
+            {
+                double score = Objective.SumOfSquares(ledger.Totals.Values);
                 if (score < bestScore)
                 {
                     bestScore = score;
                     best = current.ToArray();
                 }
-                return; 
+                return;
             }
-            foreach (var p in panel.Phases)
+            foreach (var option in options[i])
             {
-                if (used[p] >= capacity[p]) { continue; }
-                used[p]++;
-                current[i] = p;
-                totals[p] += loads[i].Va;
+                if (!ledger.Fits(option)) { continue; }
+                ledger.Add(loads[i], option);
+                current[i] = option;
                 Search(i + 1);
-                used[p]--;
-                totals[p] -= loads[i].Va;
+                ledger.Remove(loads[i], option);
             }
         }
         Search(0); //Just 0 to start
-        return ResultBuilder.Build(panel, loads.Select((load, i) => (load, best[i])));
+        if (best is null) throw new ArgumentException("The loads don't fit on this panel's phases. Add spaces to the panel.");
+        return ResultBuilder.Build(panel, loads.Zip(best));
     }
 }

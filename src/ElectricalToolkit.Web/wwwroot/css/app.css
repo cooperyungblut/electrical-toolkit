@@ -116,7 +116,7 @@ code {
 
 /* Electrical Toolkit */
 .load-table {
-    max-width: 40rem;
+    max-width: 48rem;
 }
 
 .phase-bar {
@@ -149,6 +149,17 @@ code {
     width: 7rem;
     text-align: right;
     font-variant-numeric: tabular-nums;
+}
+
+.phase-amps {
+    width: 5rem;
+    text-align: right;
+    color: var(--bs-secondary-color);
+    font-variant-numeric: tabular-nums;
+}
+
+.pin-input {
+    width: 5.5rem;
 }
 
 .schedule {

@@ -1,5 +1,4 @@
 @page "/"
-@using System.ComponentModel.Design
 @using System.Globalization
 @using System.Net
 @using ElectricalToolkit.Web.Models
@@ -8,7 +7,10 @@
 <PageTitle>Panel load balancer</PageTitle>
 
 <h1>Panel load balancer</h1>
-<p class="text-muted">Enter the panel and its loads, then balance. Blank names become UL plus the row number.</p>
+<p class="text-muted">
+    Enter the panel and its loads, then balance. Blank names become UL plus the row number.
+    To add to an existing panel, put each existing breaker's slot in Pin and it stays where it is.
+</p>
 
 <section class="mb-4">
     <h2 class="h5">Panel</h2>
@@ -17,6 +19,8 @@
             <label class="form-label" for="system">System</label>
             <select id="system" class="form-select" @bind="system">
                 <option value="ThreePhase208Y120">208Y/120V, 3-phase</option>
+                <option value="ThreePhase480Y277">480Y/277V, 3-phase</option>
+                <option value="SinglePhase120240">120/240V, 1-phase</option>
             </select>
         </div>
         <div class="col-auto">
@@ -34,6 +38,8 @@
                 <th>#</th>
                 <th>Name</th>
                 <th class="text-end">VA</th>
+                <th>Poles</th>
+                <th title="Slot of an existing breaker. Leave blank to let the balancer choose.">Pin</th>
                 <th></th>
             </tr>
         </thead>
@@ -47,6 +53,14 @@
                     <td class="text-muted">@number</td>
                     <td><input class="form-control form-control-sm" placeholder="UL@(number)" @bind="row.Name" /></td>
                     <td><input type="number" class="form-control form-control-sm text-end" min="1" @bind="row.Va" /></td>
+                    <td>
+                        <select class="form-select form-select-sm" @bind="row.Poles">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                        </select>
+                    </td>
+                    <td><input type="number" class="form-control form-control-sm pin-input" min="1" placeholder="auto" @bind="row.PinSlot" /></td>
                     <td><button class="btn btn-sm btn-outline-secondary" title="Remove load" @onclick="() => loads.Remove(row)">✕</button></td>
                 </tr>
             }
@@ -78,6 +92,7 @@
                     <div class="phase-fill" style="width: @BarWidth(total)%"></div>
                 </div>
                 <span class="phase-value">@total.ToString("N0") VA</span>
+                <span class="phase-amps">@result.PhaseAmps[phase].ToString("0.0") A</span>
             </div>
         }
 
@@ -102,11 +117,11 @@
                     var r = PlacementAt(right);
                     <tr>
                         <td>@left</td>
-                        <td>@l?.Name</td>
-                        <td class="text-end">@l?.Va.ToString("N0")</td>
-                        <td class="text-center">@(PhaseAt(left) ?? PhaseAt(right))</td>
-                        <td class="text-end">@r?.Va.ToString("N0")</td>
-                        <td>@r?.Name</td>
+                        <td>@SlotLabel(l, left)</td>
+                        <td class="text-end">@VaAt(l)</td>
+                        <td class="text-center">@PhaseOfRow(left)</td>
+                        <td class="text-end">@VaAt(r)</td>
+                        <td>@SlotLabel(r, right)</td>
                         <td>@right</td>
                     </tr>
                 }
@@ -119,9 +134,11 @@
     private string system = "ThreePhase208Y120";
     private int spaces = 42;
 
-    // Starts with an example where largest-first greedy alone gets 7/6/5 kVA and local search gets 6/6/6.
+    // Starts with an example where largest-first greedy alone gets 7/6/5 kVA on the 1-pole loads and
+    // local search gets 6/6/6. The 3-pole unit adds the same to every phase, so it doesn't change that.
     private readonly List<LoadRow> loads =
     [
+        new() { Name = "Rooftop unit", Va = 9000, Poles = 3 },
         new() { Name = "Kitchen equipment", Va = 6000 },
         new() { Name = "Receptacles - Office", Va = 3000 },
         new() { Name = "Receptacles - Break room", Va = 3000 },
@@ -143,8 +160,9 @@
         error = null;
         try
         {
-            // 1. Build a BalanceRequest from system, spaces and loads. Every load is 1 pole for now.
-            var balanceRequest = new BalanceRequest(system, spaces, loads.Select(l => new LoadRequest(l.Name, l.Va, 1)).ToList());
+            // 1. Build a BalanceRequest from system, spaces and loads.
+            var balanceRequest = new BalanceRequest(system, spaces,
+                loads.Select(l => new LoadRequest(l.Name, l.Va, l.Poles, l.PinSlot)).ToList());
             // 2. POST it to "api/panels/balance".
             var response = await Http.PostAsJsonAsync("api/panels/balance", balanceRequest);
             // 3. On success: read the BalanceResponse into result, and set spacesBalanced = spaces.
@@ -175,15 +193,36 @@
     private PlacementResponse? PlacementAt(int slot) =>
         result?.Placements.FirstOrDefault(p => p.Slots.Contains(slot));
 
-    // The phase of this slot, taken from the placement in it, or null if the slot is empty.
-    private string? PhaseAt(int slot)
+    // Rows of slots cycle through the phases (A, B, C, A, ...), the same rule the API uses.
+    // The result's phase totals list the panel's phases in order.
+    private string PhaseOfRow(int slot)
     {
-        var placement = PlacementAt(slot);
-        if (placement is null)
-            return null;
-        int index = placement.Slots.ToList().IndexOf(slot);
-        return placement.Phases[index];
+        var phases = result!.PhaseTotals.Keys.ToList();
+        return phases[(slot - 1) / 2 % phases.Count];
     }
+
+    // What a schedule cell shows for one slot. A multi-pole breaker shows its name and pole count
+    // in its first slot, and a muted continuation mark in the slots below it.
+    private RenderFragment? SlotLabel(PlacementResponse? placement, int slot) => placement switch
+    {
+        null => null,
+        _ when placement.Slots[0] != slot => @<span class="text-muted">↳ @placement.Name</span>,
+        _ => @<span>
+                @placement.Name
+                @if (placement.Poles > 1)
+                {
+                    <span class="badge text-bg-secondary ms-1">@(placement.Poles)P</span>
+                }
+                @if (placement.Pinned)
+                {
+                    <span class="badge text-bg-info ms-1" title="Pinned: kept in its existing slot">pinned</span>
+                }
+            </span>,
+    };
+
+    // A multi-pole load's VA is split equally across its poles, so each slot shows its share.
+    private static string? VaAt(PlacementResponse? placement) =>
+        placement is null ? null : (placement.Va / placement.Poles).ToString("N0");
 
     // Each bar's length is its phase's share of the heaviest phase, so the heaviest is always full width.
     private string BarWidth(double total)

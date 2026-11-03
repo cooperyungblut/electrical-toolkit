@@ -2,61 +2,72 @@ namespace ElectricalToolkit.Core.Panels;
 
 public sealed class LocalSearchBalancer : IPanelBalancer
 {
+    private const double Epsilon = 1e-6;
+
     public BalanceResult Balance(PanelConfiguration panel, IReadOnlyList<Load> loads)
     {
-        var start = new GreedyBalancer().Balance(panel, loads); // also validates
-        var totals = panel.Phases.ToDictionary(p => p, p => start.PhaseTotals[p]);
-        var capacity = panel.Phases.ToDictionary(p => p, p => panel.SlotsOnPhase(p).Count());
-        List<Load> loadList = start.Placements.Select(placement => placement.Load).ToList();
-        List<Phase> phaseOf = start.Placements.Select(placement => placement.Phases[0]).ToList();
-        var used = panel.Phases.ToDictionary(p => p, p => phaseOf.Count(ph => ph == p));
-        bool Helps(double x, Phase from, Phase to)
+        LoadValidation.Validate(panel, loads);
+        var start = GreedyBalancer.Assign(panel, loads);
+        List<Load> loadList = start.Select(a => a.Load).ToList();
+        List<IReadOnlyList<Phase>> phasesOf = start.Select(a => a.Phases).ToList();
+        var options = loadList.Select(load => PhaseOptions.For(panel, load)).ToList();
+        var ledger = new PhaseLedger(panel);
+        foreach (var (load, phases) in start)
         {
-            return 1e-6 < x && 1e-6 < (totals[from] - totals[to] - x);
+            ledger.Add(load, phases);
         }
 
+        // Every accepted move lowers the objective by more than Epsilon, and there are finitely
+        // many assignments, so this always stops.
         bool improved = true;
         while (improved)
         {
             improved = false;
+
+            // Move one load: a 1-pole load to another phase, or a 2-pole load to another phase pair.
+            // A pinned load has only one option, so it never moves.
             for (int i = 0; i < loadList.Count; i++)
             {
-                foreach (var p in panel.Phases)
+                foreach (var option in options[i])
                 {
-                    if (p == phaseOf[i]) continue;
-                    var from = phaseOf[i];
-                    if (used[p] < capacity[p] && Helps(loadList[i].Va, from, p)) // Move One at a time
+                    var from = phasesOf[i];
+                    if (PhaseOptions.SameSet(option, from) || !ledger.FitsMove(from, option))
                     {
-                        phaseOf[i] = p;
-                        totals[p] += loadList[i].Va;
-                        totals[from] -= loadList[i].Va;
-                        used[p]++;
-                        used[from]--;
+                        continue;
+                    }
+                    if (ledger.Delta([(loadList[i], from, option)]) < -Epsilon)
+                    {
+                        ledger.Move(loadList[i], from, option);
+                        phasesOf[i] = option;
                         improved = true;
                     }
                 }
             }
 
+            // Swap two loads with the same pole count. Each phase keeps the same number of
+            // used slots, so capacity can't be broken.
             for (int i = 0; i < loadList.Count; i++)
             {
                 for (int j = i + 1; j < loadList.Count; j++)
                 {
-                    if (phaseOf[i] == phaseOf[j]) continue;
-                    var (big, small) = loadList[i].Va >= loadList[j].Va ? (i, j) : (j, i);
-                    var bigPhase = phaseOf[big];
-                    var smallPhase = phaseOf[small];
-                    var d = loadList[big].Va - loadList[small].Va;
-                    if (Helps(d, bigPhase, smallPhase)) // Swap two loads
+                    if (loadList[i].IsPinned || loadList[j].IsPinned
+                        || loadList[i].Poles != loadList[j].Poles
+                        || PhaseOptions.SameSet(phasesOf[i], phasesOf[j]))
                     {
-                        (phaseOf[i], phaseOf[j]) = (phaseOf[j], phaseOf[i]);
-                        totals[bigPhase] -= d;
-                        totals[smallPhase] += d;
+                        continue;
+                    }
+                    var (pi, pj) = (phasesOf[i], phasesOf[j]);
+                    if (ledger.Delta([(loadList[i], pi, pj), (loadList[j], pj, pi)]) < -Epsilon)
+                    {
+                        ledger.Move(loadList[i], pi, pj);
+                        ledger.Move(loadList[j], pj, pi);
+                        (phasesOf[i], phasesOf[j]) = (pj, pi);
                         improved = true;
                     }
                 }
             }
         }
 
-        return ResultBuilder.Build(panel, loadList.Select((load, i) => (load, phaseOf[i])));
+        return ResultBuilder.Build(panel, loadList.Zip(phasesOf));
     }
 }
