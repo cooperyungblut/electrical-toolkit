@@ -14,7 +14,8 @@ public sealed record Placement(Load Load, IReadOnlyList<int> Slots, IReadOnlyLis
 public sealed record BalanceResult(
     IReadOnlyList<Placement> Placements,
     IReadOnlyDictionary<Phase, double> PhaseTotals,
-    double ImbalancePercent);
+    double ImbalancePercent,
+    IReadOnlyDictionary<Phase, double> PhaseAmps);
 
 public interface IPanelBalancer
 {

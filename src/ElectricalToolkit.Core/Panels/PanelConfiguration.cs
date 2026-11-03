@@ -24,6 +24,15 @@ public sealed record PanelConfiguration
         _ => throw new InvalidOperationException($"Unknown panel system {System}"),
     };
 
+    // Line-to-neutral volts. Phase current = phase VA / this, the usual panel schedule figure.
+    public double PhaseVoltage => System switch
+    {
+        PanelSystem.ThreePhase208Y120 => 120,
+        PanelSystem.SinglePhase120240 => 120,
+        PanelSystem.ThreePhase480Y277 => 277,
+        _ => throw new InvalidOperationException($"Unknown panel system {System}"),
+    };
+
     // Throw ArgumentOutOfRangeException if slot is outside 1..Spaces.
     public Phase PhaseOfSlot(int slot)
     {

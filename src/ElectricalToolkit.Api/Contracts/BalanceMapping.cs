@@ -19,6 +19,7 @@ public static class BalanceMapping
         new BalanceResponse(result.Placements.Select( pment => new PlacementResponse(pment.Load.Name, pment.Load.Va, pment.Load.Poles,
         pment.Slots, pment.Phases, pment.Load.IsPinned)).ToList(),
         result.PhaseTotals,
-        result.ImbalancePercent);
+        result.ImbalancePercent,
+        result.PhaseAmps);
     
 }

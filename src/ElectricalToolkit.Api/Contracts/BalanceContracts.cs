@@ -20,7 +20,8 @@ public sealed record LoadRequest(
 public sealed record BalanceResponse(
     IReadOnlyList<PlacementResponse> Placements,
     IReadOnlyDictionary<Phase, double> PhaseTotals,
-    double ImbalancePercent);
+    double ImbalancePercent,
+    IReadOnlyDictionary<Phase, double> PhaseAmps);
 
 public sealed record PlacementResponse(
     string Name,

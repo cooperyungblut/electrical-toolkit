@@ -42,6 +42,7 @@ public class BalanceEndpointTests : IClassFixture<WebApplicationFactory<Program>
         Assert.Equal(6000, json.GetProperty("phaseTotals").GetProperty("C").GetDouble());
         Assert.Equal(0, json.GetProperty("imbalancePercent").GetDouble(), precision: 6);
         Assert.Equal(6, json.GetProperty("placements").GetArrayLength());
+        Assert.Equal(50, json.GetProperty("phaseAmps").GetProperty("A").GetDouble(), precision: 6);
     }
 
     [Fact]

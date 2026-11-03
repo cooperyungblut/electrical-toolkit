@@ -14,6 +14,7 @@ public static class ResultBuilder
                 totals[phase] += placement.Load.VaPerPole;
             }
         }
-        return new BalanceResult(placements, totals, Imbalance.Percent(totals.Values));
+        var amps = totals.ToDictionary(t => t.Key, t => t.Value / panel.PhaseVoltage);
+        return new BalanceResult(placements, totals, Imbalance.Percent(totals.Values), amps);
     }
 }
