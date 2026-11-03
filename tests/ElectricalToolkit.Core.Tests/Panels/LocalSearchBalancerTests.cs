@@ -49,6 +49,6 @@ public class LocalSearchBalancerTests
     public void Invalid_input_is_rejected_the_same_way_as_greedy()
     {
         Assert.Throws<ArgumentException>(() => _balancer.Balance(Panel42, [new Load("", 1000)]));
-        Assert.Throws<NotSupportedException>(() => _balancer.Balance(Panel42, [new Load("Pump", 1000, 2)]));
+        Assert.Throws<ArgumentException>(() => _balancer.Balance(Panel42, [new Load("Pump", 1000, 4)]));
     }
 }

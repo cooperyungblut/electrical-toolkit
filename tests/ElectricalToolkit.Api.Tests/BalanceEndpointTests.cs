@@ -67,13 +67,25 @@ public class BalanceEndpointTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
-    public async Task Two_pole_load_returns_400_problem_details()
+    public async Task Two_pole_load_comes_back_on_two_slots()
     {
         var response = await _client.PostAsJsonAsync("/api/panels/balance", Request(42, Load("Water heater", 4500, poles: 2)));
 
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var placement = (await Json(response)).GetProperty("placements")[0];
+        Assert.Equal(2, placement.GetProperty("poles").GetInt32());
+        Assert.Equal(1, placement.GetProperty("slots")[0].GetInt32());
+        Assert.Equal(3, placement.GetProperty("slots")[1].GetInt32());
+    }
+
+    [Fact]
+    public async Task Four_pole_load_returns_400_problem_details()
+    {
+        var response = await _client.PostAsJsonAsync("/api/panels/balance", Request(42, Load("Pump", 4500, poles: 4)));
+
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
-        Assert.Contains("1-pole", (await Json(response)).GetProperty("detail").GetString());
+        Assert.Contains("Poles", (await Json(response)).GetProperty("detail").GetString());
     }
 
     [Fact]
